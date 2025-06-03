@@ -1,0 +1,6 @@
+numpy>=1.21.0
+opencv-python>=4.5.0
+matplotlib>=3.4.0
+scipy>=1.7.0
+tqdm>=4.62.0
+ipykernel>=6.0.0  # for Jupyter notebook support 
