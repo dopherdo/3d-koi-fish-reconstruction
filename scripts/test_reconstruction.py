@@ -6,6 +6,9 @@ from reconstruct import reconstruct
 import cv2
 import os
 from camutils import Camera
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../scripts')))
 
 def decode_pattern(images):
     """
