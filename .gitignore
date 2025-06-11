@@ -51,4 +51,16 @@ outputs/   # Output files
 [NOT USED]*.py  # Unused scripts
 
 # Keep calibration files in git
-!calib/*.pickle 
+!calib/*.pickle
+
+# Ignore all PNG files in calib and koi directories
+calib/*.png
+koi/**/*.png
+
+# But keep other important files
+!calib/*.txt
+!koi/**/*.txt
+!koi/**/*.json
+!koi/**/*.yaml
+!koi/**/*.yml
+!koi/**/*.pickle 
