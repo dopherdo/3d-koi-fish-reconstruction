@@ -1,14 +1,14 @@
-# 3D Object Reconstruction
+# 3D Koi Fish Reconstruction
 
-This project implements a 3D reconstruction pipeline for capturing and reconstructing 3D objects using structured light and stereo vision. The system uses two calibrated cameras and a projector to capture the object's geometry and color information.
+This project implements a 3D reconstruction pipeline for capturing and reconstructing a koi fish model using structured light and stereo vision. The system uses two calibrated cameras and a projector to capture the object's geometry and color information, with a focus on preserving the intricate details and colors of the koi fish.
 
 ## Features
 
-- Structured light pattern decoding
-- Stereo camera calibration
-- Foreground/background segmentation
-- 3D point cloud reconstruction with color
-- Visualization tools
+- Structured light pattern decoding for precise 3D capture
+- Stereo camera calibration for accurate depth estimation
+- Foreground/background segmentation using color images
+- 3D point cloud reconstruction with color preservation
+- Visualization tools for inspecting the reconstruction
 
 ## Project Structure
 
@@ -24,8 +24,8 @@ This project implements a 3D reconstruction pipeline for capturing and reconstru
 │   ├── calib_C0.pickle
 │   └── calib_C1.pickle
 ├── data/                         # Sample data (not tracked in git)
-│   └── koi/                      # Sample object scans
-└── outputs/                      # Output reconstructions
+│   └── koi/                      # Koi fish scan data
+└── outputs/                      # Reconstruction outputs
 ```
 
 ## Setup
@@ -67,4 +67,4 @@ MIT License - see LICENSE file for details
 
 ## Author
 
-[Your Name] - CS 117 Final Project 
+Chris Yeh - CS 117 Final Project 
