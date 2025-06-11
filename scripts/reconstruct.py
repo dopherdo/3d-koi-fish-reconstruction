@@ -292,3 +292,70 @@ def reconstruct(imprefixL, imprefixR, threshold=0.005, camL=None, camR=None, col
         print(f"[DEBUG] After 3D outlier removal: {pts3.shape[1]} points remain")
 
     return pts2L, pts2R, pts3, colors
+
+def generate_and_save_reconstruction(scan_path, output_pickle, threshold=0.01, mask_threshold=20, dilation_kernel_size=(9,9), dilation_iterations=2, outlier_stddev=2.5, visualize_mask=False, colorL_bg_path=None, colorR_bg_path=None):
+    """
+    Run the full reconstruction pipeline for a scan and save results to a pickle file.
+
+    Args:
+        scan_path (str): Path to the scan directory (e.g., koi/grab_0)
+        output_pickle (str): Path to output pickle file
+        threshold (float): Decoding threshold for pattern decoding
+        mask_threshold (int): Foreground mask threshold
+        dilation_kernel_size (tuple): Dilation kernel size for mask cleanup
+        dilation_iterations (int): Number of dilation iterations
+        outlier_stddev (float): Stddev for 3D outlier removal
+        visualize_mask (bool): Whether to visualize masks
+        colorL_bg_path (str): Optional path to left background image
+        colorR_bg_path (str): Optional path to right background image
+    """
+    import os
+    import pickle
+    # Paths
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # Always use grab_0 backgrounds unless overridden
+    grab0_path = os.path.join(project_root, "koi", "grab_0")
+    default_colorL_bg_path = os.path.join(grab0_path, "color_C0_00_u.png")
+    default_colorR_bg_path = os.path.join(grab0_path, "color_C1_00_u.png")
+    colorL_bg_path = colorL_bg_path or default_colorL_bg_path
+    colorR_bg_path = colorR_bg_path or default_colorR_bg_path
+    colorL_obj_path = os.path.join(scan_path, "color_C0_01_u.png")
+    colorR_obj_path = os.path.join(scan_path, "color_C1_01_u.png")
+    imprefixL = os.path.join(scan_path, "frame_C0_")
+    imprefixR = os.path.join(scan_path, "frame_C1_")
+    stereo_calib_path = os.path.join(project_root, "calib", "stereo_calibration.pickle")
+    with open(stereo_calib_path, "rb") as f:
+        stereo_calib = pickle.load(f)
+    KL = stereo_calib["KL"]
+    KR = stereo_calib["KR"]
+    R = stereo_calib["R"]
+    T = stereo_calib["T"]
+    from camutils import Camera
+    camL = Camera(
+        f=KL[0,0],
+        c=np.array([[KL[0,2]], [KL[1,2]]]),
+        R=np.eye(3),
+        t=np.zeros((3,1))
+    )
+    camR = Camera(
+        f=KR[0,0],
+        c=np.array([[KR[0,2]], [KR[1,2]]]),
+        R=R,
+        t=T.reshape(3,1)
+    )
+    # Run reconstruction
+    pts2L, pts2R, pts3, colors = reconstruct(
+        imprefixL, imprefixR, threshold, camL, camR,
+        colorL_bg_path, colorL_obj_path, colorR_bg_path, colorR_obj_path,
+        mask_threshold=mask_threshold, visualize_mask=visualize_mask
+    )
+    # Save results
+    results = {
+        'pts3': pts3,
+        'colors': colors,
+        'pts2L': pts2L,
+        'pts2R': pts2R,
+    }
+    with open(output_pickle, 'wb') as f:
+        pickle.dump(results, f)
+    print(f"[INFO] Saved reconstruction results to {output_pickle}")

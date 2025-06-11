@@ -104,5 +104,20 @@ def main():
     ax.set_box_aspect([1,1,1])
     plt.show()
 
+    # Save results to pickle file
+    output_dir = os.path.join(project_root, 'outputs')
+    os.makedirs(output_dir, exist_ok=True)
+    scan_name = os.path.basename(scan_path)
+    output_path = os.path.join(output_dir, f'{scan_name}_reconstruction.pickle')
+    results = {
+        'pts3': pts3,
+        'colors': colors,
+        'pts2L': pts2L,
+        'pts2R': pts2R,
+    }
+    with open(output_path, 'wb') as f:
+        pickle.dump(results, f)
+    print(f"[INFO] Saved reconstruction results to {output_path}")
+
 if __name__ == "__main__":
     main() 
