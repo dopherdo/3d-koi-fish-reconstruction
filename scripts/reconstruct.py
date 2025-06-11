@@ -147,7 +147,7 @@ def validate_points(pts3d, P0, P1, uv0, uv1, mask, max_reproj_error=2.0):
             valid[i] = False
     return valid
 
-def reconstruct(imprefixL, imprefixR, threshold, camL, camR, colorL_bg_path, colorL_obj_path, colorR_bg_path, colorR_obj_path, mask_threshold=30, visualize_mask=False):
+def reconstruct(imprefixL, imprefixR, threshold=0.005, camL=None, camR=None, colorL_bg_path=None, colorL_obj_path=None, colorR_bg_path=None, colorR_obj_path=None, mask_threshold=20, visualize_mask=True):
     """
     Full reconstruct function per assignment prompt:
     - Loads color images for foreground masking
@@ -158,11 +158,19 @@ def reconstruct(imprefixL, imprefixR, threshold, camL, camR, colorL_bg_path, col
     - Includes debug prints for each step
     - Handles empty results gracefully
     """
+    # --- Tuning parameters ---
+    dilation_kernel_size = (9, 9)  # Larger kernel to fill more holes
+    dilation_iterations = 2         # More aggressive dilation
+    mask_threshold = mask_threshold # Lowered for more inclusion
+    decoding_threshold = threshold  # Lowered for more inclusion
+    outlier_stddev = 2.5            # 3D outlier removal stddev
+    # -------------------------
+
     # 1. Decode the H and V coordinates for the two views (pattern images)
-    HL, HmaskL = decode(imprefixL, 0, threshold)
-    VL, VmaskL = decode(imprefixL, 20, threshold)
-    HR, HmaskR = decode(imprefixR, 0, threshold)
-    VR, VmaskR = decode(imprefixR, 20, threshold)
+    HL, HmaskL = decode(imprefixL, 0, decoding_threshold)
+    VL, VmaskL = decode(imprefixL, 20, decoding_threshold)
+    HR, HmaskR = decode(imprefixR, 0, decoding_threshold)
+    VR, VmaskR = decode(imprefixR, 20, decoding_threshold)
 
     # 2. Construct the combined 20 bit code and mask for each view
     CL = HL + 1024 * VL
@@ -170,27 +178,47 @@ def reconstruct(imprefixL, imprefixR, threshold, camL, camR, colorL_bg_path, col
     maskL_decode = HmaskL & VmaskL
     maskR_decode = HmaskR & VmaskR
 
-    # 3. Foreground Masking using color images
+    # Visualize decoding masks
+    if visualize_mask:
+        import matplotlib.pyplot as plt
+        plt.figure(figsize=(10,4))
+        plt.subplot(1,2,1)
+        plt.title('Decoding Mask L')
+        plt.imshow(maskL_decode, cmap='gray')
+        plt.subplot(1,2,2)
+        plt.title('Decoding Mask R')
+        plt.imshow(maskR_decode, cmap='gray')
+        plt.show()
+
+    # 3. Foreground Masking using color images (refined)
     colorL_bg = cv2.imread(colorL_bg_path).astype(np.float32) / 255.0
     colorL_obj = cv2.imread(colorL_obj_path).astype(np.float32) / 255.0
     colorR_bg = cv2.imread(colorR_bg_path).astype(np.float32) / 255.0
     colorR_obj = cv2.imread(colorR_obj_path).astype(np.float32) / 255.0
 
-    diffL = np.abs(colorL_obj - colorL_bg)
-    diffL_gray = cv2.cvtColor((diffL * 255).astype(np.uint8), cv2.COLOR_BGR2GRAY)
-    _, fg_maskL = cv2.threshold(diffL_gray, mask_threshold, 255, cv2.THRESH_BINARY)
-    fg_maskL = fg_maskL.astype(bool)
+    # Convert BGR to RGB for color extraction
+    colorL_obj_rgb = cv2.cvtColor((colorL_obj * 255).astype(np.uint8), cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+    colorR_obj_rgb = cv2.cvtColor((colorR_obj * 255).astype(np.uint8), cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
 
-    diffR = np.abs(colorR_obj - colorR_bg)
-    diffR_gray = cv2.cvtColor((diffR * 255).astype(np.uint8), cv2.COLOR_BGR2GRAY)
-    _, fg_maskR = cv2.threshold(diffR_gray, mask_threshold, 255, cv2.THRESH_BINARY)
-    fg_maskR = fg_maskR.astype(bool)
+    # Use compute_foreground_mask for robust mask (with largest component, morph ops)
+    fg_maskL = compute_foreground_mask(colorL_bg, colorL_obj, threshold=mask_threshold)
+    fg_maskR = compute_foreground_mask(colorR_bg, colorR_obj, threshold=mask_threshold)
 
+    # Optional: Dilate the mask to fill small holes (tune kernel size/iterations as needed)
+    dilation_kernel = np.ones(dilation_kernel_size, np.uint8)
+    fg_maskL = cv2.dilate(fg_maskL.astype(np.uint8), dilation_kernel, iterations=dilation_iterations).astype(bool)
+    fg_maskR = cv2.dilate(fg_maskR.astype(np.uint8), dilation_kernel, iterations=dilation_iterations).astype(bool)
+
+    # Visualize foreground masks
     if visualize_mask:
-        cv2.imshow("Foreground Mask L", fg_maskL.astype(np.uint8)*255)
-        cv2.imshow("Foreground Mask R", fg_maskR.astype(np.uint8)*255)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        plt.figure(figsize=(10,4))
+        plt.subplot(1,2,1)
+        plt.title('Foreground Mask L')
+        plt.imshow(fg_maskL, cmap='gray')
+        plt.subplot(1,2,2)
+        plt.title('Foreground Mask R')
+        plt.imshow(fg_maskR, cmap='gray')
+        plt.show()
 
     # Debug prints for mask statistics
     print(f"[DEBUG] Decoding maskL valid pixels: {np.sum(maskL_decode)}")
@@ -203,6 +231,17 @@ def reconstruct(imprefixL, imprefixR, threshold, camL, camR, colorL_bg_path, col
     maskR = maskR_decode & fg_maskR
     print(f"[DEBUG] Combined maskL valid pixels: {np.sum(maskL)}")
     print(f"[DEBUG] Combined maskR valid pixels: {np.sum(maskR)}")
+
+    # Visualize combined masks
+    if visualize_mask:
+        plt.figure(figsize=(10,4))
+        plt.subplot(1,2,1)
+        plt.title('Combined Mask L')
+        plt.imshow(maskL, cmap='gray')
+        plt.subplot(1,2,2)
+        plt.title('Combined Mask R')
+        plt.imshow(maskR, cmap='gray')
+        plt.show()
 
     # 5. Matching codes as before
     h, w = CL.shape
@@ -233,12 +272,23 @@ def reconstruct(imprefixL, imprefixR, threshold, camL, camR, colorL_bg_path, col
     pts2L = np.stack((validL_x[matchL], validL_y[matchL]), axis=0)
     pts2R = np.stack((validR_x[matchR], validR_y[matchR]), axis=0)
 
-    # 6. Extract color for each triangulated point
-    colorsL = colorL_obj[validL_y[matchL], validL_x[matchL]].T  # shape (3, N)
-    colorsR = colorR_obj[validR_y[matchR], validR_x[matchR]].T
+    # 6. Extract color for each triangulated point (use RGB)
+    colorsL = colorL_obj_rgb[validL_y[matchL], validL_x[matchL]].T  # shape (3, N)
+    colorsR = colorR_obj_rgb[validR_y[matchR], validR_x[matchR]].T
     colors = (colorsL + colorsR) / 2.0
 
     # 7. Triangulate the points
     pts3 = triangulate(pts2L, camL, pts2R, camR)
+
+    # 8. 3D outlier removal (bounding box or stddev filter)
+    if pts3.shape[1] > 0:
+        mean = np.mean(pts3, axis=1, keepdims=True)
+        std = np.std(pts3, axis=1, keepdims=True)
+        keep = np.all(np.abs(pts3 - mean) < outlier_stddev * std, axis=0)
+        pts3 = pts3[:, keep]
+        colors = colors[:, keep]
+        pts2L = pts2L[:, keep]
+        pts2R = pts2R[:, keep]
+        print(f"[DEBUG] After 3D outlier removal: {pts3.shape[1]} points remain")
 
     return pts2L, pts2R, pts3, colors
