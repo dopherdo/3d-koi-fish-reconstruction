@@ -40,7 +40,7 @@ def main():
     # Pattern image prefixes
     imprefixL = os.path.join(scan_path, "frame_C0_")
     imprefixR = os.path.join(scan_path, "frame_C1_")
-    threshold = 0.01  # lowered threshold for decoding
+    threshold = 0.01  # raised threshold for decoding
 
     # Load calibration objects (replace with your Camera class if needed)
     with open(calib_path0, "rb") as f:
