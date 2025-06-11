@@ -2,12 +2,10 @@ import sys
 import os
 import argparse
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../scripts')))
-import numpy as np
-from scripts.mesh_generator import (
+from mesh_generator import (
+    process_reconstruction_pickle,
     batch_process_reconstructions,
-    align_meshes,
-    generate_mesh_from_point_cloud,
-    process_reconstruction_pickle
+    align_meshes
 )
 
 def test_single_reconstruction():
@@ -140,29 +138,20 @@ def main():
     parser.add_argument('pickle', nargs='?', default=None, help='Path to a specific reconstruction pickle file')
     parser.add_argument('--pickle_dir', default="outputs/test_meshes/single", help='Directory containing reconstruction pickles')
     parser.add_argument('--output_dir', default="outputs/test_meshes/single", help='Directory to save mesh outputs')
-    parser.add_argument('--voxel_size', type=float, default=0.01)
-    parser.add_argument('--depth', type=int, default=8)
-    parser.add_argument('--visualize', action='store_true')
     args = parser.parse_args()
 
     if args.batch:
         print(f"Batch processing all pickles in {args.pickle_dir}...")
         batch_process_reconstructions(
             pickle_dir=args.pickle_dir,
-            output_dir=args.output_dir,
-            voxel_size=args.voxel_size,
-            depth=args.depth,
-            visualize=args.visualize
+            output_dir=args.output_dir
         )
         print("Batch processing complete.")
     elif args.pickle:
         print(f"Processing single pickle: {args.pickle}")
         process_reconstruction_pickle(
             pickle_path=args.pickle,
-            output_dir=args.output_dir,
-            voxel_size=args.voxel_size,
-            depth=args.depth,
-            visualize=args.visualize
+            output_dir=args.output_dir
         )
         print("Single mesh processing complete.")
     else:
@@ -175,10 +164,7 @@ def main():
         print(f"Processing first pickle found: {first_pickle}")
         process_reconstruction_pickle(
             pickle_path=first_pickle,
-            output_dir=args.output_dir,
-            voxel_size=args.voxel_size,
-            depth=args.depth,
-            visualize=args.visualize
+            output_dir=args.output_dir
         )
         print("Default single mesh processing complete.")
 

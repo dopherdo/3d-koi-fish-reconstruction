@@ -6,6 +6,7 @@ import os
 import subprocess
 from meshutils import writeply
 from pathlib import Path
+import traceback
 
 def convert_mesh_format(input_path, output_path, format='ply'):
     """
@@ -189,24 +190,22 @@ def process_reconstruction_pickle(
         export_formats: list of additional formats to export the mesh to (e.g., ['obj', 'stl'])
         output_pointcloud: path to save the point cloud as .ply (optional)
     """
-    # Load reconstruction data
+    print(f"[DEBUG] Loading pickle: {os.path.abspath(pickle_path)}")
     with open(pickle_path, 'rb') as f:
         data = pickle.load(f)
-    
     pts3 = data['pts3']
     colors = data['colors']
-    
-    # Generate output paths if output_dir is provided
+    print(f"[DEBUG] Loaded {pts3.shape[1]} points, {colors.shape[1]} colors.")
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
         base_name = os.path.splitext(os.path.basename(pickle_path))[0]
         output_pickle = os.path.join(output_dir, f'{base_name}_pointcloud.pickle')
         output_mesh = os.path.join(output_dir, f'{base_name}_mesh.ply')
+        print(f"[DEBUG] Output mesh will be: {os.path.abspath(output_mesh)}")
+        print(f"[DEBUG] Output pointcloud will be: {os.path.abspath(output_pickle)}")
     else:
         output_pickle = None
         output_mesh = None
-    
-    # Generate mesh
     mesh = generate_mesh_from_point_cloud(
         pts3=pts3,
         colors=colors,
@@ -223,52 +222,47 @@ def process_reconstruction_pickle(
         clean_with_meshlab=clean_with_meshlab,
         meshlab_script=meshlab_script
     )
-    
-    # Export to additional formats if requested
-    if export_formats and output_mesh:
-        for fmt in export_formats:
-            output_path = str(Path(output_mesh).with_suffix(f'.{fmt}'))
-            if isinstance(mesh, trimesh.Trimesh):
-                mesh.export(output_path)
-            else:
-                convert_mesh_format(output_mesh, output_path, format=fmt)
-    
+    if output_mesh and os.path.exists(output_mesh):
+        print(f"[DEBUG] Mesh file written: {output_mesh}")
+    if output_pickle and os.path.exists(output_pickle):
+        print(f"[DEBUG] Pointcloud file written: {output_pickle}")
     return mesh
 
-def batch_process_reconstructions(pickle_dir, output_dir=None, **kwargs):
+def batch_process_reconstructions(pickle_dir, output_dir=None):
     """
-    Process all reconstruction pickle files in a directory.
-    
-    Parameters
-    ----------
-    pickle_dir : str
-        Directory containing reconstruction pickle files
-    output_dir : str, optional
-        Directory to save output files
-    **kwargs : dict
-        Additional parameters to pass to process_reconstruction_pickle
+    Process all reconstruction pickle files in a directory using internal parameter lists.
     """
-    pickle_files = [f for f in os.listdir(pickle_dir) if f.endswith('_reconstruction.pickle')]
+    # Define parameter lists or defaults here
+    voxel_sizes = [0.01]
+    depths = [8]
+    # Add more parameter lists if needed
+
+    all_files = os.listdir(pickle_dir)
+    print("All files in directory:", all_files)
+    pickle_files = [f for f in all_files if f.endswith('_reconstruction.pickle')]
+    print("Found pickle files:", pickle_files)
     pickle_files.sort()
-    
     for pf in pickle_files:
-        print(f'\nProcessing {pf}...')
-        pickle_path = os.path.join(pickle_dir, pf)
-        if output_dir:
-            scan_output_dir = os.path.join(output_dir, os.path.splitext(pf)[0])
-        else:
-            scan_output_dir = None
-        
-        try:
-            mesh = process_reconstruction_pickle(
-                pickle_path,
-                output_dir=scan_output_dir,
-                **kwargs
-            )
-            print(f'Successfully generated mesh for {pf}')
-        except Exception as e:
-            print(f'Error processing {pf}: {str(e)}')
-    
+        for voxel_size in voxel_sizes:
+            for depth in depths:
+                print(f'\nProcessing {pf} with voxel_size={voxel_size}, depth={depth}...')
+                pickle_path = os.path.join(pickle_dir, pf)
+                if output_dir:
+                    scan_output_dir = os.path.join(output_dir, os.path.splitext(pf)[0])
+                else:
+                    scan_output_dir = None
+                try:
+                    mesh = process_reconstruction_pickle(
+                        pickle_path=pickle_path,
+                        output_dir=scan_output_dir,
+                        voxel_size=voxel_size,
+                        depth=depth
+                        # Other parameters use their defaults
+                    )
+                    print(f'Successfully generated mesh for {pf} (voxel_size={voxel_size}, depth={depth})')
+                except Exception as e:
+                    print(f'Error processing {pf}: {str(e)}')
+                    traceback.print_exc()
     print('\nAll reconstructions processed.')
 
 def align_meshes(mesh_paths, reference_idx=0, output_dir=None):
