@@ -2,9 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import pickle
-from reconstruct_modified import reconstruct
+from reconstruct import reconstruct
 import cv2
 import os
+from camutils import Camera
 
 def decode_pattern(images):
     """
@@ -24,63 +25,83 @@ def decode_pattern(images):
 
 def main():
     # Paths
-    scan_path = "../koi/grab_0"
-    calib_path0 = "../calib/calib_C0.pickle"
-    calib_path1 = "../calib/calib_C1.pickle"
-    
-    # Load and decode pattern images
-    print("Loading pattern images...")
-    pattern_images0 = [cv2.imread(os.path.join(scan_path, f"frame_C0_{i:02d}_u.png"), cv2.IMREAD_GRAYSCALE) 
-                      for i in range(40)]
-    pattern_images1 = [cv2.imread(os.path.join(scan_path, f"frame_C1_{i:02d}_u.png"), cv2.IMREAD_GRAYSCALE) 
-                      for i in range(40)]
-    
-    # Decode patterns (placeholder)
-    print("Decoding patterns...")
-    uv0, mask0 = decode_pattern(pattern_images0)
-    uv1, mask1 = decode_pattern(pattern_images1)
-    
-    # Run reconstruction
-    print("Running reconstruction...")
-    pts3, colors, mask = reconstruct(
-        scan_path=scan_path,
-        valid_mask0=mask0,
-        valid_mask1=mask1,
-        uv0=uv0,
-        uv1=uv1,
-        calib_path0=calib_path0,
-        calib_path1=calib_path1,
-        visualize_mask=True
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(script_dir)
+    scan_path = os.path.join(project_root, "koi", "grab_0")
+    calib_path0 = os.path.join(project_root, "calib", "calib_C0.pickle")
+    calib_path1 = os.path.join(project_root, "calib", "calib_C1.pickle")
+
+    # Color image paths
+    colorL_bg_path = os.path.join(scan_path, "color_C0_00_u.png")
+    colorL_obj_path = os.path.join(scan_path, "color_C0_01_u.png")
+    colorR_bg_path = os.path.join(scan_path, "color_C1_00_u.png")
+    colorR_obj_path = os.path.join(scan_path, "color_C1_01_u.png")
+
+    # Pattern image prefixes
+    imprefixL = os.path.join(scan_path, "frame_C0_")
+    imprefixR = os.path.join(scan_path, "frame_C1_")
+    threshold = 0.01  # lowered threshold for decoding
+
+    # Load calibration objects (replace with your Camera class if needed)
+    with open(calib_path0, "rb") as f:
+        calibL = pickle.load(f)
+    with open(calib_path1, "rb") as f:
+        calibR = pickle.load(f)
+
+    # Load stereo calibration results
+    stereo_calib_path = os.path.join(project_root, "calib", "stereo_calibration.pickle")
+    with open(stereo_calib_path, "rb") as f:
+        stereo_calib = pickle.load(f)
+
+    KL = stereo_calib["KL"]
+    distL = stereo_calib["distL"]
+    KR = stereo_calib["KR"]
+    distR = stereo_calib["distR"]
+    R = stereo_calib["R"]
+    T = stereo_calib["T"]
+
+    # Camera objects
+    camL = Camera(
+        f=KL[0,0],
+        c=np.array([[KL[0,2]], [KL[1,2]]]),
+        R=np.eye(3),
+        t=np.zeros((3,1))
     )
-    
+    camR = Camera(
+        f=KR[0,0],
+        c=np.array([[KR[0,2]], [KR[1,2]]]),
+        R=R,
+        t=T.reshape(3,1)
+    )
+
+    # Call the new reconstruct function
+    pts2L, pts2R, pts3, colors = reconstruct(
+        imprefixL, imprefixR, threshold, camL, camR,
+        colorL_bg_path, colorL_obj_path, colorR_bg_path, colorR_obj_path
+    )
+
+    print(f"[DEBUG] Number of matched correspondences: {pts2L.shape[1]}")
+
     # Print some statistics
     print("\nReconstruction Statistics:")
     print(f"Number of 3D points: {pts3.shape[1]}")
+    if pts3.shape[1] == 0:
+        print("No 3D points were reconstructed. Check your masks and decoding.")
+        return
     print(f"Point cloud bounds:")
     print(f"  X: [{pts3[0].min():.2f}, {pts3[0].max():.2f}]")
     print(f"  Y: [{pts3[1].min():.2f}, {pts3[1].max():.2f}]")
     print(f"  Z: [{pts3[2].min():.2f}, {pts3[2].max():.2f}]")
-    
-    # Visualize the point cloud
+
+    # Visualize the point cloud with color
     fig = plt.figure(figsize=(12, 8))
     ax = fig.add_subplot(111, projection='3d')
-    
-    # Plot points with their colors
-    scatter = ax.scatter(pts3[0], pts3[1], pts3[2], 
-                        c=colors.T,  # colors should be Nx3
-                        s=1,         # point size
-                        alpha=0.5)   # transparency
-    
-    # Set labels and title
+    ax.scatter(pts3[0], pts3[1], pts3[2], c=colors.T, s=1, alpha=0.5)
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
     ax.set_title('3D Reconstruction with Color')
-    
-    # Equal aspect ratio
     ax.set_box_aspect([1,1,1])
-    
-    # Show the plot
     plt.show()
 
 if __name__ == "__main__":
