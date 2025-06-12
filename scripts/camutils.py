@@ -1,3 +1,8 @@
+"""
+camutils.py
+
+This module provides camera utility functions, including triangulation and camera model classes, for use in 3D reconstruction pipelines.
+"""
 import numpy as np
 import scipy.optimize
 

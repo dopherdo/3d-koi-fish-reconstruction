@@ -1,3 +1,8 @@
+"""
+test_mesh_generation.py
+
+This script provides batch and single-mesh generation utilities for testing and processing reconstructed point clouds into meshes.
+"""
 import sys
 import os
 import argparse

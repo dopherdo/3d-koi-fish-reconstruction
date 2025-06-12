@@ -1,3 +1,8 @@
+"""
+stereo_calibrate.py
+
+This script performs stereo camera calibration using chessboard images, computes the stereo extrinsics (R, T), and saves the calibration results.
+"""
 import cv2
 import numpy as np
 import glob
@@ -7,7 +12,7 @@ import os
 '''
 Load chessboard images for both cameras (from calib/frame_C0_XX_u.png and calib/frame_C1_XX_u.png)
 Find chessboard corners in both sets
-Use OpenCV’s cv2.stereoCalibrate to compute the stereo extrinsics (R, T) and updated intrinsics/distortion
+Use OpenCV's cv2.stereoCalibrate to compute the stereo extrinsics (R, T) and updated intrinsics/distortion
 Save all calibration results (including R, T) to calib/stereo_calibration.pickle
 Print a summary of the calibration results
 '''

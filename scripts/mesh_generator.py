@@ -1,3 +1,8 @@
+"""
+mesh_generator.py
+
+This module provides functions for generating meshes from point clouds, including Poisson surface reconstruction, Laplacian smoothing, normal orientation, and batch processing utilities.
+"""
 import numpy as np
 import open3d as o3d
 import trimesh

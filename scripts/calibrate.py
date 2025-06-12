@@ -1,3 +1,8 @@
+"""
+calibrate.py
+
+This script performs camera calibration using chessboard images to compute intrinsic parameters for each camera.
+"""
 #
 # To run:
 #

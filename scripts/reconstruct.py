@@ -1,3 +1,8 @@
+"""
+reconstruct.py
+
+This script handles the 3D reconstruction pipeline for each scan. It performs decoding mask application, foreground masking using color image differencing, triangulation using calibration parameters, and extracts per-point RGB colors.
+"""
 import cv2
 import numpy as np
 import os

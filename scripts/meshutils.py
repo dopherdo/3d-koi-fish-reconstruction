@@ -1,3 +1,8 @@
+"""
+meshutils.py
+
+This module contains helper functions for mesh I/O (loading and saving meshes) and common geometric operations. Used across multiple scripts.
+"""
 
 def writeply(X,color,tri,filename):
     """

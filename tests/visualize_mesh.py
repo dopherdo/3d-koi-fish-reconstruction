@@ -1,3 +1,8 @@
+"""
+visualize_mesh.py
+
+This script is a utility for rendering point clouds and meshes using Open3D. Helps visualize intermediate results such as raw point clouds, aligned scans, and final meshes.
+"""
 import sys
 import os
 import open3d as o3d

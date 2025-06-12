@@ -1,3 +1,8 @@
+"""
+batch_reconstruct.py
+
+This script runs the reconstruction pipeline for all scan directories in batch mode, saving the results as pickle files.
+"""
 import os
 from reconstruct import generate_and_save_reconstruction
 

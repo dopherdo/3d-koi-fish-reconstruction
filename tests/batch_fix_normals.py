@@ -1,3 +1,8 @@
+"""
+batch_fix_normals.py
+
+This script batch reorients normals for all meshes to ensure outward-facing normals for improved Poisson results and visualization.
+"""
 import os
 import open3d as o3d
 import numpy as np

@@ -1,3 +1,8 @@
+"""
+batch_smooth_meshes.py
+
+This script applies Laplacian smoothing to all generated meshes in batch. Uses a configurable number of smoothing iterations to improve mesh quality and reduce noise.
+"""
 import os
 import open3d as o3d
 
